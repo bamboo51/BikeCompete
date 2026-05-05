@@ -55,6 +55,7 @@ class AuthService {
 
   /// Trigger Google Sign-In, send the ID token to the backend, store the JWT.
   Future<AuthUser> signInWithGoogle() async {
+    assert(_webClientId.isNotEmpty, 'GOOGLE_WEB_CLIENT_ID is not set — rebuild with --dart-define=GOOGLE_WEB_CLIENT_ID=...');
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) throw 'Sign-in cancelled.';
 
