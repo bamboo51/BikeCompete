@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../../models/account_model.dart';
 import '../../models/error_response.dart';
+import '../auth_service.dart';
 import '../../models/home_model.dart';
 import '../../models/leaderboard_user_model.dart';
 import '../../models/ride_model.dart';
@@ -43,15 +44,18 @@ class ApiClient {
     : baseUrl = baseUrl ?? defaultBaseUrl,
       _httpClient = httpClient ?? http.Client();
 
+  Map<String, String> get _headers => {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    if (AuthService.instance.token != null)
+      'Authorization': 'Bearer ${AuthService.instance.token}',
+  };
+
   Future<Map<String, dynamic>> get(String endpoint) async {
     final response = await _httpClient.get(
       Uri.parse('$baseUrl$endpoint'),
-      headers: const {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers: _headers,
     );
-
     return _decodeObjectResponse('GET', endpoint, response);
   }
 
@@ -61,13 +65,9 @@ class ApiClient {
   ) async {
     final response = await _httpClient.post(
       Uri.parse('$baseUrl$endpoint'),
-      headers: const {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers: _headers,
       body: jsonEncode(body),
     );
-
     return _decodeObjectResponse('POST', endpoint, response);
   }
 
