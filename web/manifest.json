@@ -1,6 +1,6 @@
 {
-    "name": "bike_competition",
-    "short_name": "bike_competition",
+    "name": "cybon_front",
+    "short_name": "cybon_front",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

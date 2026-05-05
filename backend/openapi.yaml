@@ -1,0 +1,391 @@
+openapi: 3.0.3
+
+info:
+  title: Bike Competition API
+  version: 1.0.0
+
+servers:
+  - url: http://{host}:5000
+    variables:
+      host:
+        default: localhost
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    User:
+      type: object
+      properties:
+        id:    { type: integer }
+        name:  { type: string }
+        email: { type: string, format: email }
+
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string, description: JWT for subsequent requests }
+        user:  { $ref: '#/components/schemas/User' }
+
+    Rider:
+      type: object
+      properties:
+        id:   { type: integer }
+        name: { type: string }
+        team: { type: string, nullable: true }
+
+    Race:
+      type: object
+      properties:
+        id:       { type: integer }
+        name:     { type: string }
+        date:     { type: string, format: date }
+        location: { type: string, nullable: true }
+
+    RaceResult:
+      type: object
+      properties:
+        position:             { type: integer }
+        rider:                { type: string }
+        finish_time_seconds:  { type: integer, nullable: true }
+
+    RaceDetail:
+      allOf:
+        - $ref: '#/components/schemas/Race'
+        - type: object
+          properties:
+            results:
+              type: array
+              items: { $ref: '#/components/schemas/RaceResult' }
+
+    UserDailyTask:
+      type: object
+      properties:
+        id:                { type: integer }
+        title:             { type: string }
+        description:       { type: string, nullable: true }
+        task_type:         { type: string, enum: [distance, time, count] }
+        target_value:      { type: integer }
+        points:            { type: integer }
+        status:            { type: string, enum: [pending, completed] }
+        progress_distance: { type: integer, description: metres }
+        progress_time:     { type: integer, description: seconds }
+        assigned_date:     { type: string, format: date }
+        completed_at:      { type: string, format: date-time, nullable: true }
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:            { type: integer }
+        user_id:         { type: integer }
+        name:            { type: string }
+        points:          { type: integer }
+        distance_km:     { type: number, format: float }
+        time_hours:      { type: number, format: float }
+        current_streak:  { type: integer }
+        longest_streak:  { type: integer }
+
+paths:
+
+  # ------------------------------------------------------------------ #
+  # Health                                                               #
+  # ------------------------------------------------------------------ #
+  /health:
+    get:
+      summary: Health check
+      security: []
+      tags: [System]
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+
+  # ------------------------------------------------------------------ #
+  # Auth                                                                 #
+  # ------------------------------------------------------------------ #
+  /auth/google:
+    post:
+      summary: Sign in with Google
+      security: []
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_token]
+              properties:
+                id_token:
+                  type: string
+                  description: Google ID token obtained from the Flutter google_sign_in package
+      responses:
+        '200':
+          description: Authenticated — returns JWT and user profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400':
+          description: Missing id_token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: Invalid or expired Google token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/dev-token/{user_id}:
+    get:
+      summary: Get a JWT for any user without Google (development only)
+      security: []
+      tags: [Auth]
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user:
+                    type: object
+                    properties:
+                      id:   { type: integer }
+                      name: { type: string }
+        '403':
+          description: Not available in production
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: User not found
+
+  # ------------------------------------------------------------------ #
+  # Riders                                                               #
+  # ------------------------------------------------------------------ #
+  /riders/:
+    get:
+      summary: List all riders
+      security: []
+      tags: [Riders]
+      responses:
+        '200':
+          description: Array of riders
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Rider' }
+
+    post:
+      summary: Create a rider
+      security: []
+      tags: [Riders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:    { type: string }
+                team_id: { type: integer, nullable: true }
+      responses:
+        '201':
+          description: Rider created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Rider' }
+
+  /riders/{rider_id}:
+    get:
+      summary: Get a single rider
+      security: []
+      tags: [Riders]
+      parameters:
+        - name: rider_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Rider detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Rider' }
+        '404':
+          description: Rider not found
+
+  # ------------------------------------------------------------------ #
+  # Races                                                                #
+  # ------------------------------------------------------------------ #
+  /races/:
+    get:
+      summary: List all races ordered by date descending
+      security: []
+      tags: [Races]
+      responses:
+        '200':
+          description: Array of races
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Race' }
+
+    post:
+      summary: Create a race
+      security: []
+      tags: [Races]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, date]
+              properties:
+                name:     { type: string }
+                date:     { type: string, format: date, example: '2026-06-01' }
+                location: { type: string }
+      responses:
+        '201':
+          description: Race created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Race' }
+
+  /races/{race_id}:
+    get:
+      summary: Get race detail including results sorted by position
+      security: []
+      tags: [Races]
+      parameters:
+        - name: race_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Race with results
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RaceDetail' }
+        '404':
+          description: Race not found
+
+  # ------------------------------------------------------------------ #
+  # Tasks                                                                #
+  # ------------------------------------------------------------------ #
+  /tasks/today:
+    get:
+      summary: Get the authenticated user's daily tasks for today
+      tags: [Tasks]
+      responses:
+        '200':
+          description: Array of today's assigned tasks with progress
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UserDailyTask' }
+        '401':
+          description: Missing or invalid JWT
+
+  /tasks/{task_id}/progress:
+    patch:
+      summary: Add progress to a daily task (auto-completes when target is reached)
+      tags: [Tasks]
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                distance_m:   { type: integer, description: Metres to add, default: 0 }
+                time_seconds: { type: integer, description: Seconds to add, default: 0 }
+      responses:
+        '200':
+          description: Updated task — status becomes completed when target is reached
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDailyTask' }
+        '400':
+          description: Task already completed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: Missing or invalid JWT
+        '404':
+          description: Task not found or does not belong to the authenticated user
+
+  # ------------------------------------------------------------------ #
+  # Leaderboard                                                          #
+  # ------------------------------------------------------------------ #
+  /leaderboard/:
+    get:
+      summary: Get the leaderboard sorted by a metric
+      tags: [Leaderboard]
+      parameters:
+        - name: metric
+          in: query
+          schema:
+            type: string
+            enum: [points, distance, time, streak]
+            default: points
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Ranked list of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LeaderboardEntry' }
+        '400':
+          description: Invalid metric value
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: Missing or invalid JWT
