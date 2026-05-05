@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../models/account_model.dart';
@@ -18,13 +19,29 @@ import 'task_api.dart';
 import 'tracking_api.dart';
 
 class ApiClient {
-  static const String defaultBaseUrl = 'http://localhost:3000/api';
+  static const String _configuredBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
+
+  static String get defaultBaseUrl {
+    if (_configuredBaseUrl.isNotEmpty) {
+      return _configuredBaseUrl;
+    }
+
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:3000/api';
+    }
+
+    return 'http://localhost:3000/api';
+  }
 
   final String baseUrl;
   final http.Client _httpClient;
 
-  ApiClient({this.baseUrl = defaultBaseUrl, http.Client? httpClient})
-    : _httpClient = httpClient ?? http.Client();
+  ApiClient({String? baseUrl, http.Client? httpClient})
+    : baseUrl = baseUrl ?? defaultBaseUrl,
+      _httpClient = httpClient ?? http.Client();
 
   Future<Map<String, dynamic>> get(String endpoint) async {
     final response = await _httpClient.get(

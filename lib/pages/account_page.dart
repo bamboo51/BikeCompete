@@ -21,7 +21,15 @@ class AccountPage extends StatelessWidget {
           }
 
           if (snapshot.hasError) {
-            return const Center(child: Text('Failed to load account data.'));
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Failed to load account data.\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
           }
 
           if (!snapshot.hasData) {
