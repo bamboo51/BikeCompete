@@ -80,46 +80,33 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-
     final topThree = showWorkers
         ? workers.take(3).toList()
         : departments
-        .take(3)
-        .map(
-          (department) => LeaderboardUser(
-        rank: department.rank,
-        name: department.name,
-        department: 'Department',
-        points: department.points,
-        co2SavedKg: department.co2SavedKg,
-        distanceKm: department.distanceKm,
-      ),
-    )
-        .toList();
+              .take(3)
+              .map(
+                (department) => LeaderboardUser(
+                  rank: department.rank,
+                  name: department.name,
+                  department: 'Department',
+                  points: department.points,
+                  co2SavedKg: department.co2SavedKg,
+                  distanceKm: department.distanceKm,
+                ),
+              )
+              .toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Leaderboard'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Leaderboard')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          Text(
-            'Carbon Ride Challenge',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+          _LeaderboardSummary(
+            title: showWorkers ? 'Top rider' : 'Top department',
+            leaderName: topThree.first.name,
+            leaderPoints: topThree.first.points,
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Compete by cycling, saving CO₂, and earning points.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 20),
-
+          const SizedBox(height: 16),
           SegmentedButton<bool>(
             segments: const [
               ButtonSegment<bool>(
@@ -135,29 +122,17 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             ],
             selected: {showWorkers},
             onSelectionChanged: (value) {
-              setState(() {
-                showWorkers = value.first;
-              });
+              setState(() => showWorkers = value.first);
             },
           ),
-
-          const SizedBox(height: 24),
-
+          const SizedBox(height: 20),
           TopThreeSection(users: topThree),
-
           const SizedBox(height: 24),
-
-          Text(
-            showWorkers ? 'Worker Ranking' : 'Department Ranking',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-
+          _SectionTitle(showWorkers ? 'Worker ranking' : 'Department ranking'),
+          const SizedBox(height: 10),
           if (showWorkers)
             ...workers.map(
-                  (user) => LeaderboardItem(
+              (user) => LeaderboardItem(
                 rank: user.rank,
                 name: user.name,
                 subtitle: user.department,
@@ -168,7 +143,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             )
           else
             ...departments.map(
-                  (department) => LeaderboardItem(
+              (department) => LeaderboardItem(
                 rank: department.rank,
                 name: department.name,
                 subtitle: 'Department total',
@@ -177,8 +152,92 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                 distanceKm: department.distanceKm,
               ),
             ),
+          SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
+      backgroundColor: colorScheme.surface,
+    );
+  }
+}
+
+class _LeaderboardSummary extends StatelessWidget {
+  final String title;
+  final String leaderName;
+  final int leaderPoints;
+
+  const _LeaderboardSummary({
+    required this.title,
+    required this.leaderName,
+    required this.leaderPoints,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      color: colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
+              child: const Icon(Icons.emoji_events),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    leaderName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '$leaderPoints',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+
+  const _SectionTitle(this.title);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: Theme.of(
+        context,
+      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
     );
   }
 }
@@ -186,47 +245,30 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 class TopThreeSection extends StatelessWidget {
   final List<LeaderboardUser> users;
 
-  const TopThreeSection({
-    super.key,
-    required this.users,
-  });
+  const TopThreeSection({super.key, required this.users});
 
   @override
   Widget build(BuildContext context) {
-    if (users.length < 3) {
-      return const SizedBox.shrink();
-    }
-
-    final second = users[1];
-    final first = users[0];
-    final third = users[2];
+    if (users.length < 3) return const SizedBox.shrink();
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
-          child: PodiumCard(
-            user: second,
-            height: 150,
-            icon: Icons.looks_two,
-          ),
+          child: PodiumCard(user: users[1], height: 140, icon: Icons.looks_two),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: PodiumCard(
-            user: first,
-            height: 190,
+            user: users[0],
+            height: 172,
             icon: Icons.emoji_events,
             isChampion: true,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
-          child: PodiumCard(
-            user: third,
-            height: 130,
-            icon: Icons.looks_3,
-          ),
+          child: PodiumCard(user: users[2], height: 128, icon: Icons.looks_3),
         ),
       ],
     );
@@ -252,10 +294,9 @@ class PodiumCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
-      elevation: isChampion ? 2 : 0,
       color: isChampion
           ? colorScheme.primaryContainer
-          : colorScheme.surfaceContainerHighest,
+          : colorScheme.surfaceContainer,
       child: SizedBox(
         height: height,
         child: Padding(
@@ -265,17 +306,15 @@ class PodiumCard extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                size: isChampion ? 36 : 30,
-                color: isChampion
-                    ? colorScheme.onPrimaryContainer
-                    : colorScheme.onSurfaceVariant,
+                color: isChampion ? colorScheme.primary : colorScheme.secondary,
+                size: isChampion ? 34 : 28,
               ),
               const SizedBox(height: 8),
               Text(
                 '#${user.rank}',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 4),
               Text(
@@ -283,17 +322,18 @@ class PodiumCard extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 4),
               Text(
                 '${user.points} pts',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: isChampion
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSurfaceVariant,
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -328,66 +368,65 @@ class LeaderboardItem extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
+      color: colorScheme.surfaceContainerLowest,
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 8,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         leading: CircleAvatar(
-          backgroundColor: _rankBackgroundColor(context),
+          backgroundColor: rank <= 3
+              ? colorScheme.primaryContainer
+              : colorScheme.surfaceContainerHighest,
+          foregroundColor: rank <= 3
+              ? colorScheme.onPrimaryContainer
+              : colorScheme.onSurfaceVariant,
           child: Text(
             '$rank',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: rank <= 3
-                  ? colorScheme.onPrimaryContainer
-                  : colorScheme.onSurfaceVariant,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w900),
           ),
         ),
         title: Text(
           name,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
-            '$subtitle • ${distanceKm.toStringAsFixed(1)} km • '
-                '${co2SavedKg.toStringAsFixed(1)} kg CO₂ saved',
+            '$subtitle\n${distanceKm.toStringAsFixed(1)} km  |  '
+            '${co2SavedKg.toStringAsFixed(1)} kg CO2',
+            maxLines: 2,
           ),
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '$points',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
+        trailing: SizedBox(
+          width: 68,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '$points',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
-            ),
-            Text(
-              'pts',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
+              Text(
+                'pts',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
-  }
-
-  Color _rankBackgroundColor(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    if (rank <= 3) {
-      return colorScheme.primaryContainer;
-    }
-
-    return colorScheme.surfaceContainerHighest;
   }
 }
 

@@ -20,34 +20,30 @@ class _MainNavigationState extends State<MainNavigation> {
     AccountPage(),
   ];
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
+      body: IndexedStack(index: _selectedIndex, children: _pages),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() => _selectedIndex = index);
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.directions_bike_outlined),
+            selectedIcon: Icon(Icons.directions_bike),
+            label: 'Ride',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.emoji_events),
-            label: 'Ranking',
+          NavigationDestination(
+            icon: Icon(Icons.leaderboard_outlined),
+            selectedIcon: Icon(Icons.leaderboard),
+            label: 'Rank',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Account',
+          NavigationDestination(
+            icon: Icon(Icons.eco_outlined),
+            selectedIcon: Icon(Icons.eco),
+            label: 'Impact',
           ),
         ],
       ),

@@ -1,79 +1,26 @@
 import 'package:flutter/material.dart';
+
 import '../services/gps_accelerometer_gyro.dart';
+import '../widgets/stat_card.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-// 1. データモデル：バックエンドに渡す際や、受け取る際の設計図
 class Task {
-  final String id; // バックエンドでの識別用
+  final String id;
   final String title;
+  final String description;
   final bool isDone;
-  final String category; // 'Daily' or 'Optional'
+  final String category;
+  final int points;
 
   const Task({
     required this.id,
     required this.title,
+    required this.description,
     required this.isDone,
     required this.category,
+    required this.points,
   });
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Task App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MainScreen(),
-    );
-  }
-}
-
-// 2. ナビゲーション管理：Statefulを使うのはここだけに留める
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
-
-  @override
-  State<MainScreen> createState() => _MainScreenState();
-}
-
-class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-
-  static const List<Widget> _pages = [
-    HomePage(),
-    Center(child: Text('Ranking Page')),
-    Center(child: Text('Account Page')),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.emoji_events),
-            label: 'Ranking',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Account'),
-        ],
-      ),
-    );
-  }
-}
-
-// 3. ホーム画面
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -82,13 +29,36 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  static const int _points = 10;
+  static const int _points = 1250;
+  static const double _weeklyDistanceKm = 32;
+  static const double _weeklyGoalKm = 50;
+  static const double _co2SavedKg = 18.4;
 
   final List<Task> _tasks = const [
-    Task(id: '1', title: 'TASK1', isDone: true, category: 'Daily'),
-    Task(id: '2', title: 'TASK2', isDone: false, category: 'Daily'),
-    Task(id: '3', title: 'TASK3', isDone: false, category: 'Optional'),
-    Task(id: '4', title: 'TASK4', isDone: true, category: 'Optional'),
+    Task(
+      id: 'task_001',
+      title: 'Cycle to work',
+      description: 'Complete one commute by bicycle today.',
+      isDone: false,
+      category: 'Today',
+      points: 100,
+    ),
+    Task(
+      id: 'task_002',
+      title: 'Log your ride',
+      description: 'Submit GPS tracking and motion data.',
+      isDone: true,
+      category: 'Today',
+      points: 50,
+    ),
+    Task(
+      id: 'task_003',
+      title: 'Replace a short drive',
+      description: 'Use a bike for an errand under 5 km.',
+      isDone: false,
+      category: 'Bonus',
+      points: 75,
+    ),
   ];
 
   bool _gpsLoading = false;
@@ -97,9 +67,7 @@ class _HomePageState extends State<HomePage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      showDragHandle: true,
       builder: (_) => const _SensorSheet(),
     );
   }
@@ -112,13 +80,11 @@ class _HomePageState extends State<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'GPS OK\n'
-            'Lat: ${position.latitude.toStringAsFixed(6)}\n'
-            'Lng: ${position.longitude.toStringAsFixed(6)}\n'
-            'Accuracy: ${position.accuracy.toStringAsFixed(1)} m',
+            'GPS OK  Lat ${position.latitude.toStringAsFixed(6)}, '
+            'Lng ${position.longitude.toStringAsFixed(6)}, '
+            'Accuracy ${position.accuracy.toStringAsFixed(1)} m',
           ),
-          duration: const Duration(seconds: 5),
-          backgroundColor: Colors.green[700],
+          backgroundColor: Theme.of(context).colorScheme.primary,
         ),
       );
     } catch (e) {
@@ -126,7 +92,7 @@ class _HomePageState extends State<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('GPS error: $e'),
-          backgroundColor: Colors.red[700],
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     } finally {
@@ -136,75 +102,172 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final dailyTasks = _tasks.where((t) => t.category == 'Daily').toList();
-    final optionalTasks = _tasks.where((t) => t.category == 'Optional').toList();
+    final colorScheme = Theme.of(context).colorScheme;
+    final progress = (_weeklyDistanceKm / _weeklyGoalKm).clamp(0.0, 1.0);
+    final todayTasks = _tasks.where((task) => task.category == 'Today');
+    final bonusTasks = _tasks.where((task) => task.category == 'Bonus');
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Home'), centerTitle: true),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
+      appBar: AppBar(title: const Text('Ride Dashboard')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          FloatingActionButton.small(
-            heroTag: 'sensors',
-            onPressed: _showSensorSheet,
-            tooltip: 'Live Sensors',
-            child: const Icon(Icons.sensors),
+          _HeroPanel(
+            progress: progress,
+            weeklyDistanceKm: _weeklyDistanceKm,
+            weeklyGoalKm: _weeklyGoalKm,
+            onSensorsPressed: _showSensorSheet,
+            onGpsPressed: _gpsLoading ? null : _testGps,
+            gpsLoading: _gpsLoading,
           ),
-          const SizedBox(height: 8),
-          FloatingActionButton(
-            heroTag: 'gps',
-            onPressed: _gpsLoading ? null : _testGps,
-            tooltip: 'Test GPS',
-            child: _gpsLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : const Icon(Icons.gps_fixed),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: StatCard(
+                  label: 'Points',
+                  value: '$_points',
+                  color: colorScheme.primary,
+                  icon: Icons.stars_outlined,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  label: 'CO2 Saved',
+                  value: '${_co2SavedKg.toStringAsFixed(1)} kg',
+                  color: colorScheme.secondary,
+                  icon: Icons.air_outlined,
+                ),
+              ),
+            ],
           ),
+          const SizedBox(height: 24),
+          _SectionHeader(
+            title: 'Today',
+            actionText:
+                '${todayTasks.where((task) => task.isDone).length}/'
+                '${todayTasks.length} done',
+          ),
+          const SizedBox(height: 10),
+          ...todayTasks.map((task) => TaskTile(task: task)),
+          const SizedBox(height: 20),
+          _SectionHeader(title: 'Bonus', actionText: '+75 available'),
+          const SizedBox(height: 10),
+          ...bonusTasks.map((task) => TaskTile(task: task)),
         ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildPointCard(_points),
-            const SizedBox(height: 24),
-            const Text(
-              'Daily Tasks',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            ...dailyTasks.map((task) => TaskTile(task: task)),
-            const SizedBox(height: 24),
-            const Text(
-              'Optional Tasks',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            ...optionalTasks.map((task) => TaskTile(task: task)),
-          ],
-        ),
       ),
     );
   }
+}
 
-  Widget _buildPointCard(int points) {
+class _HeroPanel extends StatelessWidget {
+  final double progress;
+  final double weeklyDistanceKm;
+  final double weeklyGoalKm;
+  final VoidCallback onSensorsPressed;
+  final VoidCallback? onGpsPressed;
+  final bool gpsLoading;
+
+  const _HeroPanel({
+    required this.progress,
+    required this.weeklyDistanceKm,
+    required this.weeklyGoalKm,
+    required this.onSensorsPressed,
+    required this.onGpsPressed,
+    required this.gpsLoading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
-      color: Colors.deepPurple,
+      color: colorScheme.primaryContainer,
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Current Points', style: TextStyle(color: Colors.white)),
-            Text(
-              '$points pt',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  child: const Icon(Icons.directions_bike),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Weekly goal',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${weeklyDistanceKm.toStringAsFixed(0)} of '
+                        '${weeklyGoalKm.toStringAsFixed(0)} km completed',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${(progress * 100).round()}%',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 12,
+                backgroundColor: Colors.white.withValues(alpha: 0.75),
+                color: colorScheme.primary,
               ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: onGpsPressed,
+                    icon: gpsLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.gps_fixed),
+                    label: const Text('GPS'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onSensorsPressed,
+                    icon: const Icon(Icons.sensors),
+                    label: const Text('Sensors'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -213,7 +276,44 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// 4. Live sensor bottom sheet
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String actionText;
+
+  const _SectionHeader({required this.title, required this.actionText});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+        ),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            actionText,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _SensorSheet extends StatefulWidget {
   const _SensorSheet();
 
@@ -238,23 +338,20 @@ class _SensorSheetState extends State<_SensorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+          Text(
+            'Live sensors',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 16),
-          const Text('Live Sensors', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           StreamBuilder<SensorSnapshot>(
             stream: _service.snapshots,
@@ -265,40 +362,40 @@ class _SensorSheetState extends State<_SensorSheet> {
                   _SensorTile(
                     icon: Icons.gps_fixed,
                     label: 'GPS',
-                    color: Colors.green,
+                    color: colorScheme.primary,
                     lines: data?.gps == null
-                        ? ['Waiting for fix…']
+                        ? ['Waiting for fix']
                         : [
-                            'Lat:  ${data!.gps!.latitude.toStringAsFixed(6)}',
-                            'Lng:  ${data.gps!.longitude.toStringAsFixed(6)}',
-                            'Speed: ${data.gps!.speed.toStringAsFixed(1)} m/s',
-                            'Acc:   ±${data.gps!.accuracy.toStringAsFixed(1)} m',
+                            'Lat ${data!.gps!.latitude.toStringAsFixed(6)}',
+                            'Lng ${data.gps!.longitude.toStringAsFixed(6)}',
+                            'Speed ${data.gps!.speed.toStringAsFixed(1)} m/s',
+                            'Accuracy ${data.gps!.accuracy.toStringAsFixed(1)} m',
                           ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   _SensorTile(
                     icon: Icons.vibration,
-                    label: 'Accelerometer (m/s²)',
-                    color: Colors.orange,
+                    label: 'Accelerometer',
+                    color: colorScheme.tertiary,
                     lines: data == null
-                        ? ['Starting…']
+                        ? ['Starting']
                         : [
-                            'X: ${data.accelerometer.x.toStringAsFixed(3)}',
-                            'Y: ${data.accelerometer.y.toStringAsFixed(3)}',
-                            'Z: ${data.accelerometer.z.toStringAsFixed(3)}',
+                            'X ${data.accelerometer.x.toStringAsFixed(3)}',
+                            'Y ${data.accelerometer.y.toStringAsFixed(3)}',
+                            'Z ${data.accelerometer.z.toStringAsFixed(3)}',
                           ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   _SensorTile(
                     icon: Icons.rotate_right,
-                    label: 'Gyroscope (rad/s)',
-                    color: Colors.blue,
+                    label: 'Gyroscope',
+                    color: const Color(0xFF0277BD),
                     lines: data == null
-                        ? ['Starting…']
+                        ? ['Starting']
                         : [
-                            'X: ${data.gyroscope.x.toStringAsFixed(3)}',
-                            'Y: ${data.gyroscope.y.toStringAsFixed(3)}',
-                            'Z: ${data.gyroscope.z.toStringAsFixed(3)}',
+                            'X ${data.gyroscope.x.toStringAsFixed(3)}',
+                            'Y ${data.gyroscope.y.toStringAsFixed(3)}',
+                            'Z ${data.gyroscope.z.toStringAsFixed(3)}',
                           ],
                   ),
                 ],
@@ -327,24 +424,38 @@ class _SensorTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 10),
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
-                const SizedBox(height: 4),
-                ...lines.map((l) => Text(l, style: const TextStyle(fontFamily: 'monospace', fontSize: 13))),
+                Text(
+                  label,
+                  style: TextStyle(fontWeight: FontWeight.w800, color: color),
+                ),
+                const SizedBox(height: 6),
+                ...lines.map(
+                  (line) => Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(
+                      line,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -354,29 +465,45 @@ class _SensorTile extends StatelessWidget {
   }
 }
 
-// 5. 個別のタスク部品：独立させることで管理しやすくする
 class TaskTile extends StatelessWidget {
   final Task task;
+
   const TaskTile({super.key, required this.task});
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.only(bottom: 10),
+      color: task.isDone
+          ? colorScheme.surfaceContainerHighest
+          : colorScheme.surfaceContainerLowest,
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Icon(
           task.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: task.isDone ? Colors.green : Colors.grey,
+          color: task.isDone ? colorScheme.primary : colorScheme.outline,
         ),
         title: Text(
-          task.title, // 修正：task.title
+          task.title,
           style: TextStyle(
+            fontWeight: FontWeight.w800,
             decoration: task.isDone ? TextDecoration.lineThrough : null,
           ),
         ),
-        trailing: const Icon(Icons.chevron_right, size: 16),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(task.description),
+        ),
+        trailing: Text(
+          '+${task.points}',
+          style: TextStyle(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
         onTap: () {
-          // TODO: バックエンドに完了フラグを飛ばす処理をここに書く
           debugPrint('Task ID: ${task.id} tapped');
         },
       ),
