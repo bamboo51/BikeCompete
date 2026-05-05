@@ -61,7 +61,10 @@ class _MainScreenState extends State<MainScreen> {
         onTap: (index) => setState(() => _selectedIndex = index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.emoji_events), label: 'Ranking'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.emoji_events),
+            label: 'Ranking',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Account'),
         ],
       ),
@@ -77,18 +80,19 @@ class HomePage extends StatelessWidget {
 
   // サンプルデータ（将来的にバックエンドから取得するリスト）
   final List<Task> _tasks = const [
-    Task(id: '1', title: 'TASK1', isDone: true,category: 'Daily'),
-    Task(id: '2', title: 'TASK2', isDone: false,category: 'Daily'),
-    Task(id: '3', title: 'TASK3', isDone: false,category: 'Optional'),
+    Task(id: '1', title: 'TASK1', isDone: true, category: 'Daily'),
+    Task(id: '2', title: 'TASK2', isDone: false, category: 'Daily'),
+    Task(id: '3', title: 'TASK3', isDone: false, category: 'Optional'),
     Task(id: '4', title: 'TASK4', isDone: true, category: 'Optional'),
-    
   ];
- 
+
   @override
   Widget build(BuildContext context) {
     // カテゴリごとにデータをフィルタリング
     final dailyTasks = _tasks.where((t) => t.category == 'Daily').toList();
-    final optionalTasks = _tasks.where((t) => t.category == 'Optional').toList();
+    final optionalTasks = _tasks
+        .where((t) => t.category == 'Optional')
+        .toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Home'), centerTitle: true),
@@ -99,14 +103,20 @@ class HomePage extends StatelessWidget {
           children: [
             _buildPointCard(_points), // ポイント表示
             const SizedBox(height: 24),
-            
-            const Text('Daily Tasks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ...dailyTasks.map((task) => TaskTile(task: task)).toList(),
-            
+
+            const Text(
+              'Daily Tasks',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            ...dailyTasks.map((task) => TaskTile(task: task)),
+
             const SizedBox(height: 24),
-            
-            const Text('Optional Tasks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ...optionalTasks.map((task) => TaskTile(task: task)).toList(),
+
+            const Text(
+              'Optional Tasks',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            ...optionalTasks.map((task) => TaskTile(task: task)),
           ],
         ),
       ),
@@ -123,7 +133,14 @@ class HomePage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Current Points', style: TextStyle(color: Colors.white)),
-            Text('$points pt', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+            Text(
+              '$points pt',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),
@@ -147,12 +164,14 @@ class TaskTile extends StatelessWidget {
         ),
         title: Text(
           task.title, // 修正：task.title
-          style: TextStyle(decoration: task.isDone ? TextDecoration.lineThrough : null),
+          style: TextStyle(
+            decoration: task.isDone ? TextDecoration.lineThrough : null,
+          ),
         ),
         trailing: const Icon(Icons.chevron_right, size: 16),
         onTap: () {
           // TODO: バックエンドに完了フラグを飛ばす処理をここに書く
-          print('Task ID: ${task.id} tapped');
+          debugPrint('Task ID: ${task.id} tapped');
         },
       ),
     );

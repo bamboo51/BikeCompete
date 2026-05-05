@@ -1,0 +1,756 @@
+openapi: 3.0.3
+info:
+  title: Carbon Ride Challenge Dummy API
+  version: 1.0.0
+  description: Dummy backend API for Flutter and Postman testing.
+servers:
+  - url: http://localhost:3000/api
+    description: Local dummy backend
+
+tags:
+  - name: Home
+  - name: Leaderboard
+  - name: Account
+  - name: Ride
+  - name: Tracking
+  - name: Tasks
+  - name: Debug
+
+paths:
+  /home:
+    get:
+      tags:
+        - Home
+      summary: Get home dashboard data
+      operationId: getHomeData
+      responses:
+        "200":
+          description: Home dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeResponse"
+              example:
+                totalPoints: 1250
+                co2SavedKg: 18.4
+                weeklyDistanceKm: 32
+                weeklyGoalKm: 50
+                tasks:
+                  - id: task_001
+                    title: Cycle to work
+                    description: Ride your bicycle to work today
+                    points: 100
+                    completed: false
+                  - id: task_002
+                    title: Log your ride
+                    description: Submit GPS tracking data
+                    points: 50
+                    completed: true
+
+  /leaderboard:
+    get:
+      tags:
+        - Leaderboard
+      summary: Get leaderboard data
+      operationId: getLeaderboard
+      responses:
+        "200":
+          description: Leaderboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardResponse"
+              example:
+                workers:
+                  - rank: 1
+                    userId: worker_001
+                    name: Tanaka
+                    points: 2400
+                    distanceKm: 120.5
+                    co2SavedKg: 24.1
+                  - rank: 2
+                    userId: worker_002
+                    name: Sato
+                    points: 2150
+                    distanceKm: 106.2
+                    co2SavedKg: 21.2
+                  - rank: 3
+                    userId: worker_003
+                    name: Phongwit
+                    points: 1950
+                    distanceKm: 96.4
+                    co2SavedKg: 19.3
+                departments:
+                  - rank: 1
+                    departmentName: Production
+                    points: 9800
+                    co2SavedKg: 102.4
+                  - rank: 2
+                    departmentName: Engineering
+                    points: 8600
+                    co2SavedKg: 89.1
+
+  /account:
+    get:
+      tags:
+        - Account
+      summary: Get account data
+      operationId: getAccount
+      responses:
+        "200":
+          description: Account profile and stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+              example:
+                userId: worker_003
+                name: Phongwit
+                department: Frontend
+                stats:
+                  totalPoints: 1950
+                  totalDistanceKm: 96.4
+                  totalCo2SavedKg: 19.3
+                  cyclingDays: 14
+                badges:
+                  - id: badge_001
+                    name: 7-Day Streak
+                  - id: badge_002
+                    name: 100 km Rider
+                  - id: badge_003
+                    name: CO2 Saver
+
+  /ride/start:
+    post:
+      tags:
+        - Ride
+      summary: Start a ride session
+      operationId: startRide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RideStartRequest"
+            example:
+              userId: worker_003
+              startedAt: "2026-05-05T01:30:00.000Z"
+      responses:
+        "201":
+          description: Ride started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RideStartResponse"
+              example:
+                rideId: ride_1714890000000
+                status: started
+        "400":
+          description: Missing userId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Missing userId
+
+  /tracking:
+    post:
+      tags:
+        - Tracking
+      summary: Send GPS, accelerometer, and gyroscope data
+      operationId: sendTrackingData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrackingRequest"
+            example:
+              rideId: ride_1714890000000
+              timestamp: "2026-05-05T01:31:00.000Z"
+              gps:
+                latitude: 35.6812
+                longitude: 139.7671
+                speed: 4.2
+                accuracy: 8.0
+              accelerometer:
+                x: 0.12
+                y: 9.71
+                z: 0.44
+              gyroscope:
+                x: 0.01
+                y: 0.03
+                z: 0.02
+      responses:
+        "201":
+          description: Tracking data received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingResponse"
+              example:
+                success: true
+                trackingId: track_1714890000000
+                receivedAt: "2026-05-05T01:31:01.000Z"
+        "400":
+          description: Missing rideId or sensor data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                missingRideId:
+                  value:
+                    error: Missing rideId
+                missingSensorData:
+                  value:
+                    error: Missing sensor data
+
+  /ride/stop:
+    post:
+      tags:
+        - Ride
+      summary: Stop a ride session
+      operationId: stopRide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RideStopRequest"
+            example:
+              rideId: ride_1714890000000
+              endedAt: "2026-05-05T02:00:00.000Z"
+      responses:
+        "200":
+          description: Ride completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RideStopResponse"
+              example:
+                rideId: ride_1714890000000
+                status: completed
+                distanceKm: 8.5
+                co2SavedKg: 1.7
+                pointsEarned: 85
+        "400":
+          description: Missing rideId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Missing rideId
+        "404":
+          description: Ride not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Ride not found
+
+  /tasks/complete:
+    post:
+      tags:
+        - Tasks
+      summary: Complete a task
+      operationId: completeTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskCompleteRequest"
+            example:
+              taskId: task_001
+              completedAt: "2026-05-05T02:10:00.000Z"
+      responses:
+        "201":
+          description: Task completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskCompleteResponse"
+              example:
+                taskId: task_001
+                completed: true
+                completedAt: "2026-05-05T02:10:00.000Z"
+                pointsEarned: 100
+        "400":
+          description: Missing taskId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Missing taskId
+
+  /debug/tracking:
+    get:
+      tags:
+        - Debug
+      summary: Get all received tracking data
+      operationId: getDebugTrackingData
+      responses:
+        "200":
+          description: Debug tracking records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DebugTrackingResponse"
+              example:
+                count: 1
+                data:
+                  - trackingId: track_1714890000000
+                    rideId: ride_1714890000000
+                    timestamp: "2026-05-05T01:31:00.000Z"
+                    gps:
+                      latitude: 35.6812
+                      longitude: 139.7671
+                      speed: 4.2
+                      accuracy: 8.0
+                    accelerometer:
+                      x: 0.12
+                      y: 9.71
+                      z: 0.44
+                    gyroscope:
+                      x: 0.01
+                      y: 0.03
+                      z: 0.02
+                    receivedAt: "2026-05-05T01:31:01.000Z"
+
+components:
+  schemas:
+    HomeResponse:
+      type: object
+      required:
+        - totalPoints
+        - co2SavedKg
+        - weeklyDistanceKm
+        - weeklyGoalKm
+        - tasks
+      properties:
+        totalPoints:
+          type: integer
+          example: 1250
+        co2SavedKg:
+          type: number
+          format: double
+          example: 18.4
+        weeklyDistanceKm:
+          type: number
+          format: double
+          example: 32
+        weeklyGoalKm:
+          type: number
+          format: double
+          example: 50
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+
+    Task:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - points
+        - completed
+      properties:
+        id:
+          type: string
+          example: task_001
+        title:
+          type: string
+          example: Cycle to work
+        description:
+          type: string
+          example: Ride your bicycle to work today
+        points:
+          type: integer
+          example: 100
+        completed:
+          type: boolean
+          example: false
+
+    LeaderboardResponse:
+      type: object
+      required:
+        - workers
+        - departments
+      properties:
+        workers:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkerLeaderboardItem"
+        departments:
+          type: array
+          items:
+            $ref: "#/components/schemas/DepartmentLeaderboardItem"
+
+    WorkerLeaderboardItem:
+      type: object
+      required:
+        - rank
+        - userId
+        - name
+        - points
+        - distanceKm
+        - co2SavedKg
+      properties:
+        rank:
+          type: integer
+          example: 1
+        userId:
+          type: string
+          example: worker_001
+        name:
+          type: string
+          example: Tanaka
+        points:
+          type: integer
+          example: 2400
+        distanceKm:
+          type: number
+          format: double
+          example: 120.5
+        co2SavedKg:
+          type: number
+          format: double
+          example: 24.1
+
+    DepartmentLeaderboardItem:
+      type: object
+      required:
+        - rank
+        - departmentName
+        - points
+        - co2SavedKg
+      properties:
+        rank:
+          type: integer
+          example: 1
+        departmentName:
+          type: string
+          example: Production
+        points:
+          type: integer
+          example: 9800
+        co2SavedKg:
+          type: number
+          format: double
+          example: 102.4
+
+    AccountResponse:
+      type: object
+      required:
+        - userId
+        - name
+        - department
+        - stats
+        - badges
+      properties:
+        userId:
+          type: string
+          example: worker_003
+        name:
+          type: string
+          example: Phongwit
+        department:
+          type: string
+          example: Frontend
+        stats:
+          $ref: "#/components/schemas/UserStats"
+        badges:
+          type: array
+          items:
+            $ref: "#/components/schemas/Badge"
+
+    UserStats:
+      type: object
+      required:
+        - totalPoints
+        - totalDistanceKm
+        - totalCo2SavedKg
+        - cyclingDays
+      properties:
+        totalPoints:
+          type: integer
+          example: 1950
+        totalDistanceKm:
+          type: number
+          format: double
+          example: 96.4
+        totalCo2SavedKg:
+          type: number
+          format: double
+          example: 19.3
+        cyclingDays:
+          type: integer
+          example: 14
+
+    Badge:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          example: badge_001
+        name:
+          type: string
+          example: 7-Day Streak
+
+    RideStartRequest:
+      type: object
+      required:
+        - userId
+      properties:
+        userId:
+          type: string
+          example: worker_003
+        startedAt:
+          type: string
+          format: date-time
+          example: "2026-05-05T01:30:00.000Z"
+
+    RideStartResponse:
+      type: object
+      required:
+        - rideId
+        - status
+      properties:
+        rideId:
+          type: string
+          example: ride_1714890000000
+        status:
+          type: string
+          enum:
+            - started
+          example: started
+
+    TrackingRequest:
+      type: object
+      required:
+        - rideId
+        - timestamp
+        - gps
+        - accelerometer
+        - gyroscope
+      properties:
+        rideId:
+          type: string
+          example: ride_1714890000000
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-05-05T01:31:00.000Z"
+        gps:
+          $ref: "#/components/schemas/GpsData"
+        accelerometer:
+          $ref: "#/components/schemas/Vector3Data"
+        gyroscope:
+          $ref: "#/components/schemas/Vector3Data"
+
+    GpsData:
+      type: object
+      required:
+        - latitude
+        - longitude
+        - speed
+        - accuracy
+      properties:
+        latitude:
+          type: number
+          format: double
+          example: 35.6812
+        longitude:
+          type: number
+          format: double
+          example: 139.7671
+        speed:
+          type: number
+          format: double
+          description: Speed in meters per second.
+          example: 4.2
+        accuracy:
+          type: number
+          format: double
+          description: GPS accuracy in meters.
+          example: 8.0
+
+    Vector3Data:
+      type: object
+      required:
+        - x
+        - y
+        - z
+      properties:
+        x:
+          type: number
+          format: double
+          example: 0.12
+        y:
+          type: number
+          format: double
+          example: 9.71
+        z:
+          type: number
+          format: double
+          example: 0.44
+
+    TrackingResponse:
+      type: object
+      required:
+        - success
+        - trackingId
+        - receivedAt
+      properties:
+        success:
+          type: boolean
+          example: true
+        trackingId:
+          type: string
+          example: track_1714890000000
+        receivedAt:
+          type: string
+          format: date-time
+          example: "2026-05-05T01:31:01.000Z"
+
+    RideStopRequest:
+      type: object
+      required:
+        - rideId
+      properties:
+        rideId:
+          type: string
+          example: ride_1714890000000
+        endedAt:
+          type: string
+          format: date-time
+          example: "2026-05-05T02:00:00.000Z"
+
+    RideStopResponse:
+      type: object
+      required:
+        - rideId
+        - status
+        - distanceKm
+        - co2SavedKg
+        - pointsEarned
+      properties:
+        rideId:
+          type: string
+          example: ride_1714890000000
+        status:
+          type: string
+          enum:
+            - completed
+          example: completed
+        distanceKm:
+          type: number
+          format: double
+          example: 8.5
+        co2SavedKg:
+          type: number
+          format: double
+          example: 1.7
+        pointsEarned:
+          type: integer
+          example: 85
+
+    TaskCompleteRequest:
+      type: object
+      required:
+        - taskId
+      properties:
+        taskId:
+          type: string
+          example: task_001
+        completedAt:
+          type: string
+          format: date-time
+          example: "2026-05-05T02:10:00.000Z"
+
+    TaskCompleteResponse:
+      type: object
+      required:
+        - taskId
+        - completed
+        - completedAt
+        - pointsEarned
+      properties:
+        taskId:
+          type: string
+          example: task_001
+        completed:
+          type: boolean
+          example: true
+        completedAt:
+          type: string
+          format: date-time
+          example: "2026-05-05T02:10:00.000Z"
+        pointsEarned:
+          type: integer
+          example: 100
+
+    DebugTrackingResponse:
+      type: object
+      required:
+        - count
+        - data
+      properties:
+        count:
+          type: integer
+          example: 1
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrackingDebugRecord"
+
+    TrackingDebugRecord:
+      type: object
+      required:
+        - trackingId
+        - rideId
+        - timestamp
+        - gps
+        - accelerometer
+        - gyroscope
+        - receivedAt
+      properties:
+        trackingId:
+          type: string
+          example: track_1714890000000
+        rideId:
+          type: string
+          example: ride_1714890000000
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-05-05T01:31:00.000Z"
+        gps:
+          $ref: "#/components/schemas/GpsData"
+        accelerometer:
+          $ref: "#/components/schemas/Vector3Data"
+        gyroscope:
+          $ref: "#/components/schemas/Vector3Data"
+        receivedAt:
+          type: string
+          format: date-time
+          example: "2026-05-05T01:31:01.000Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: Missing rideId
