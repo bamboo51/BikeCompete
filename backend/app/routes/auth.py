@@ -32,8 +32,8 @@ def google_login():
             google_requests.Request(),
             GOOGLE_CLIENT_ID,
         )
-    except ValueError as e:
-        return jsonify({"error": f"Invalid token: {e}"}), 401
+    except ValueError:
+        return jsonify({"error": "Invalid token"}), 401
 
     user = User.query.filter_by(google_sub=idinfo["sub"]).first()
     if not user:
