@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/gps_accelerometer_gyro.dart';
 
 void main() {
   runApp(const MyApp());
@@ -72,13 +73,17 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// 3. ホーム画面：データを受け取って表示するだけのStatelessWidget
-class HomePage extends StatelessWidget {
+// 3. ホーム画面
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
-  final int _points = 10;
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
 
-  // サンプルデータ（将来的にバックエンドから取得するリスト）
+class _HomePageState extends State<HomePage> {
+  static const int _points = 10;
+
   final List<Task> _tasks = const [
     Task(id: '1', title: 'TASK1', isDone: true, category: 'Daily'),
     Task(id: '2', title: 'TASK2', isDone: false, category: 'Daily'),
@@ -86,32 +91,69 @@ class HomePage extends StatelessWidget {
     Task(id: '4', title: 'TASK4', isDone: true, category: 'Optional'),
   ];
 
+  bool _gpsLoading = false;
+
+  Future<void> _testGps() async {
+    setState(() => _gpsLoading = true);
+    try {
+      final position = await SensorService.instance.getCurrentPosition();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'GPS OK\n'
+            'Lat: ${position.latitude.toStringAsFixed(6)}\n'
+            'Lng: ${position.longitude.toStringAsFixed(6)}\n'
+            'Accuracy: ${position.accuracy.toStringAsFixed(1)} m',
+          ),
+          duration: const Duration(seconds: 5),
+          backgroundColor: Colors.green[700],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('GPS error: $e'),
+          backgroundColor: Colors.red[700],
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _gpsLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // カテゴリごとにデータをフィルタリング
     final dailyTasks = _tasks.where((t) => t.category == 'Daily').toList();
-    final optionalTasks = _tasks
-        .where((t) => t.category == 'Optional')
-        .toList();
+    final optionalTasks = _tasks.where((t) => t.category == 'Optional').toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Home'), centerTitle: true),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _gpsLoading ? null : _testGps,
+        tooltip: 'Test GPS',
+        child: _gpsLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.gps_fixed),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildPointCard(_points), // ポイント表示
+            _buildPointCard(_points),
             const SizedBox(height: 24),
-
             const Text(
               'Daily Tasks',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             ...dailyTasks.map((task) => TaskTile(task: task)),
-
             const SizedBox(height: 24),
-
             const Text(
               'Optional Tasks',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -123,7 +165,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // ポイント表示セクション
   Widget _buildPointCard(int points) {
     return Card(
       color: Colors.deepPurple,

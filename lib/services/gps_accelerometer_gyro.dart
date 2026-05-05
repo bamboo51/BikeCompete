@@ -66,6 +66,26 @@ class SensorService {
 
   bool get isRunning => _accelSub != null;
 
+  /// One-shot: request permission then return the current position.
+  /// Throws a descriptive [String] if location is unavailable.
+  Future<Position> getCurrentPosition() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) throw 'Location services are disabled.';
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) throw 'Location permission denied.';
+    }
+    if (permission == LocationPermission.deniedForever) {
+      throw 'Location permission permanently denied — enable it in Settings.';
+    }
+
+    return Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+  }
+
   /// Request location permission from the OS.
   /// Returns true if permission was granted.
   Future<bool> requestPermission() async {
