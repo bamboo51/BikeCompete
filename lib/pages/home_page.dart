@@ -4,6 +4,21 @@ void main() {
   runApp(const MyApp());
 }
 
+// 1. データモデル：バックエンドに渡す際や、受け取る際の設計図
+class Task {
+  final String id; // バックエンドでの識別用
+  final String title;
+  final bool isDone;
+  final String category; // 'Daily' or 'Optional'
+
+  const Task({
+    required this.id,
+    required this.title,
+    required this.isDone,
+    required this.category,
+  });
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -20,7 +35,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// ナビゲーションを管理する親ウィジェット
+// 2. ナビゲーション管理：Statefulを使うのはここだけに留める
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -31,11 +46,10 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  // 表示する画面のリスト
   static const List<Widget> _pages = [
     HomePage(),
-    Center(child: Text('Ranking Page')), // ランキング画面（仮）
-    Center(child: Text('Account Page')), // アカウント画面（仮）
+    Center(child: Text('Ranking Page')),
+    Center(child: Text('Account Page')),
   ];
 
   @override
@@ -44,11 +58,7 @@ class _MainScreenState extends State<MainScreen> {
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onTap: (index) => setState(() => _selectedIndex = index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.emoji_events), label: 'Ranking'),
@@ -59,72 +69,90 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// ホーム画面のコンテンツ
+// 3. ホーム画面：データを受け取って表示するだけのStatelessWidget
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
+  final int _points = 10;
+
+  // サンプルデータ（将来的にバックエンドから取得するリスト）
+  final List<Task> _tasks = const [
+    Task(id: '1', title: 'TASK1', isDone: true,category: 'Daily'),
+    Task(id: '2', title: 'TASK2', isDone: false,category: 'Daily'),
+    Task(id: '3', title: 'TASK3', isDone: false,category: 'Optional'),
+    Task(id: '4', title: 'TASK4', isDone: true, category: 'Optional'),
+    
+  ];
+ 
   @override
   Widget build(BuildContext context) {
+    // カテゴリごとにデータをフィルタリング
+    final dailyTasks = _tasks.where((t) => t.category == 'Daily').toList();
+    final optionalTasks = _tasks.where((t) => t.category == 'Optional').toList();
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: SingleChildScrollView( // 画面が溢れないようにスクロール可能に
+      appBar: AppBar(title: const Text('Home'), centerTitle: true),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. ポイント表示セクション
-            _buildPointCard(),
+            _buildPointCard(_points), // ポイント表示
             const SizedBox(height: 24),
-
-            // 2. Daily Tasks
-            const Text('Daily Tasks', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            _buildTaskTile('朝の散歩', true),
-            _buildTaskTile('読書 15分', false),
+            
+            const Text('Daily Tasks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ...dailyTasks.map((task) => TaskTile(task: task)).toList(),
+            
             const SizedBox(height: 24),
-
-            // 3. Optional Tasks
-            const Text('Optional Tasks', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            _buildTaskTile('部屋の掃除', false),
-            _buildTaskTile('新しいレシピに挑戦', false),
+            
+            const Text('Optional Tasks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ...optionalTasks.map((task) => TaskTile(task: task)).toList(),
           ],
         ),
       ),
     );
   }
 
-  // ポイント表示のカード
-  Widget _buildPointCard() {
+  // ポイント表示セクション
+  Widget _buildPointCard(int points) {
     return Card(
-      elevation: 4,
       color: Colors.deepPurple,
-      child: const Padding(
-        padding: EdgeInsets.all(20.0),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Current Points:', style: TextStyle(color: Colors.white, fontSize: 16)),
-            Text('1,250 pt', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+            const Text('Current Points', style: TextStyle(color: Colors.white)),
+            Text('$points pt', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
     );
   }
+}
 
-  // タスク一行分のデザイン
-  Widget _buildTaskTile(String title, bool isDone) {
+// 4. 個別のタスク部品：独立させることで管理しやすくする
+class TaskTile extends StatelessWidget {
+  final Task task;
+  const TaskTile({super.key, required this.task});
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
         leading: Icon(
-          isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: isDone ? Colors.green : Colors.grey,
+          task.isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+          color: task.isDone ? Colors.green : Colors.grey,
         ),
-        title: Text(title, style: TextStyle(decoration: isDone ? TextDecoration.lineThrough : null)),
-        trailing: const Icon(Icons.chevron_right),
+        title: Text(
+          task.title, // 修正：task.title
+          style: TextStyle(decoration: task.isDone ? TextDecoration.lineThrough : null),
+        ),
+        trailing: const Icon(Icons.chevron_right, size: 16),
         onTap: () {
-          // タスク詳細や完了処理をここに書く
+          // TODO: バックエンドに完了フラグを飛ばす処理をここに書く
+          print('Task ID: ${task.id} tapped');
         },
       ),
     );
