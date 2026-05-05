@@ -93,6 +93,17 @@ class _HomePageState extends State<HomePage> {
 
   bool _gpsLoading = false;
 
+  void _showSensorSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => const _SensorSheet(),
+    );
+  }
+
   Future<void> _testGps() async {
     setState(() => _gpsLoading = true);
     try {
@@ -130,16 +141,29 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Home'), centerTitle: true),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _gpsLoading ? null : _testGps,
-        tooltip: 'Test GPS',
-        child: _gpsLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-              )
-            : const Icon(Icons.gps_fixed),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'sensors',
+            onPressed: _showSensorSheet,
+            tooltip: 'Live Sensors',
+            child: const Icon(Icons.sensors),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton(
+            heroTag: 'gps',
+            onPressed: _gpsLoading ? null : _testGps,
+            tooltip: 'Test GPS',
+            child: _gpsLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.gps_fixed),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -189,7 +213,148 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// 4. 個別のタスク部品：独立させることで管理しやすくする
+// 4. Live sensor bottom sheet
+class _SensorSheet extends StatefulWidget {
+  const _SensorSheet();
+
+  @override
+  State<_SensorSheet> createState() => _SensorSheetState();
+}
+
+class _SensorSheetState extends State<_SensorSheet> {
+  final _service = SensorService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _service.start();
+  }
+
+  @override
+  void dispose() {
+    _service.stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Live Sensors', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          StreamBuilder<SensorSnapshot>(
+            stream: _service.snapshots,
+            builder: (context, snap) {
+              final data = snap.data;
+              return Column(
+                children: [
+                  _SensorTile(
+                    icon: Icons.gps_fixed,
+                    label: 'GPS',
+                    color: Colors.green,
+                    lines: data?.gps == null
+                        ? ['Waiting for fix…']
+                        : [
+                            'Lat:  ${data!.gps!.latitude.toStringAsFixed(6)}',
+                            'Lng:  ${data.gps!.longitude.toStringAsFixed(6)}',
+                            'Speed: ${data.gps!.speed.toStringAsFixed(1)} m/s',
+                            'Acc:   ±${data.gps!.accuracy.toStringAsFixed(1)} m',
+                          ],
+                  ),
+                  const SizedBox(height: 8),
+                  _SensorTile(
+                    icon: Icons.vibration,
+                    label: 'Accelerometer (m/s²)',
+                    color: Colors.orange,
+                    lines: data == null
+                        ? ['Starting…']
+                        : [
+                            'X: ${data.accelerometer.x.toStringAsFixed(3)}',
+                            'Y: ${data.accelerometer.y.toStringAsFixed(3)}',
+                            'Z: ${data.accelerometer.z.toStringAsFixed(3)}',
+                          ],
+                  ),
+                  const SizedBox(height: 8),
+                  _SensorTile(
+                    icon: Icons.rotate_right,
+                    label: 'Gyroscope (rad/s)',
+                    color: Colors.blue,
+                    lines: data == null
+                        ? ['Starting…']
+                        : [
+                            'X: ${data.gyroscope.x.toStringAsFixed(3)}',
+                            'Y: ${data.gyroscope.y.toStringAsFixed(3)}',
+                            'Z: ${data.gyroscope.z.toStringAsFixed(3)}',
+                          ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SensorTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final List<String> lines;
+
+  const _SensorTile({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.lines,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
+                const SizedBox(height: 4),
+                ...lines.map((l) => Text(l, style: const TextStyle(fontFamily: 'monospace', fontSize: 13))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 5. 個別のタスク部品：独立させることで管理しやすくする
 class TaskTile extends StatelessWidget {
   final Task task;
   const TaskTile({super.key, required this.task});
