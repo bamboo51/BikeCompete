@@ -12,6 +12,7 @@ COPY alembic.ini .
 COPY migrations/ ./migrations/
 COPY app/ ./app/
 COPY entrypoint.sh .
+COPY seed.py .
 RUN chmod +x entrypoint.sh
 
 EXPOSE 5000
