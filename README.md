@@ -9,6 +9,7 @@
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-lightgrey?logo=flutter)
 ![Status](https://img.shields.io/badge/Status-In%20Development-yellow)
 
+![System Page](./figure/pages.png)
 A cross-platform cycling challenge app that motivates riders to replace car trips with bike rides through daily tasks, streak tracking, a point-based leaderboard, and real-time GPS/sensor monitoring.
 
 > **Status:** Active development — the codebase is undergoing ongoing refactoring. Several screens still use hardcoded placeholder data while the full backend integration is built out. See [Known Limitations](#known-limitations) below.
