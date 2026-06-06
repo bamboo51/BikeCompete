@@ -14,7 +14,6 @@ A cross-platform cycling challenge app that motivates riders to replace car trip
 > **Status:** Active development — the codebase is undergoing ongoing refactoring. Several screens still use hardcoded placeholder data while the full backend integration is built out. See [Known Limitations](#known-limitations) below.
 
 ## Project Members
-## Project Members
 
 - [Iurii](https://github.com/Qumetri)
 - [Pai](https://github.com/bamboo51)
